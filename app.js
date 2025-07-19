@@ -120,9 +120,10 @@ app.post('/monitor', function( req, res ) {
   tabIdToResources[tabId][{subject,predicate,object}] = true;
   // create link from resource to tabId
   putHash(resourcesToTabId,true,[subject,predicate,object,tabId]);
+  res.status(201).send();
 });
 
-app.delete('/monitor', function( req, _res ) {
+app.delete('/monitor', function( req, res ) {
   const tabId = req.get("MU-TAB-ID");
   const subject = req.query.subject || undefined;
   const predicate = req.query.predicate || undefined;
@@ -138,6 +139,7 @@ app.delete('/monitor', function( req, _res ) {
     
   // delete link from resource to tabId
   remHash(resourcesToTabId,[subject,predicate,object,tabId]);
+  res.status(201).send();
 });
 
 app.post('/.mu/delta', async function (req, res) {
