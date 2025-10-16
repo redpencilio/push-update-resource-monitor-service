@@ -58,11 +58,14 @@ function remHash( hash, nestedKeys ) {
   if( nestedKeys.length ) {
     const [key, ...rest] = nestedKeys;
     if( rest.length === 0 ) {
-      delete hash[key];
-    } else {
-      remHash(hash, rest);
-      if( Object.keys(hash[key]).length === 0 ) {
+      if ( typeof hash === "object" )
         delete hash[key];
+    } else {
+      if ( typeof hash === "object" ) {
+        remHash(hash[key], rest);
+        if( Object.keys(hash[key]).length === 0 ) {
+          delete hash[key];
+        }
       }
     }
   }
