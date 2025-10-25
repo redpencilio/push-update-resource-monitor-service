@@ -110,6 +110,50 @@ function getHashMultiple( hash, ...nestedKeys ) {
   }
 }
 
+
+// Resource constraint keys
+
+/**
+ * Resource constraint.
+ * @typedef {Object} ConstraintDescription
+ * @property  {string|undefined} subject Subject to constrain, undefined meaning no constraint.
+ * @property  {string|undefined} predicate Predicate to constrain, undefined meaning no constraint.
+ * @property  {string|undefined} object Object to constrain, undefined meaning no constraint.
+ */
+
+/**
+ * Converts a resource specification into a hash key.
+ * @param {ConstraintDescription} constraint Constraint for which hash key will be returned.
+ * @return {string} String representation of the resource specification.
+ */
+function resourceConstraintToHashKey({subject, predicate, object}) {
+  let key =
+      `${typeof subject === "string" ? subject : "^"}`
+        + `|${typeof predicate === "string" ? predicate : "^"}`
+        + `|${typeof object === "string" ? object : "^"}`;
+  return key;
+}
+
+/**
+ * Converts a hash key to a resource specification, if it was converted by `resourceSpecToHashKey`.
+ *
+ * @param {string} hashKey The hash key to be converted.
+ * @return {ConstraintDescription}  Expanded constraint of the key.
+ */
+function hashKeyToResourceConstraint(hashKey) {
+  let [subjectKey,predicateKey,...objectKeyParts] = hashKey.split("|");
+  return {
+    subject: subjectKey === "^" ? undefined : subjectKey,
+    predicate: predicateKey === "^" ? undefined : predicateKey,
+    object: objectKeyParts.length === 1 && objectKeyParts[0] === "^"
+      ? undefined
+      : objectKeyParts.join("|")
+  };
+}
+
+
+// Respond to calls
+
 app.post('/monitor', function( req, res ) {
   const tabId = req.get("MU-TAB-ID");
   const subject = req.query.subject || undefined;
@@ -120,7 +164,7 @@ app.post('/monitor', function( req, res ) {
 
   // create link from tabId to resource
   tabIdToResources[tabId] ||= {};
-  tabIdToResources[tabId][{subject,predicate,object}] = true;
+  tabIdToResources[tabId][resourceConstraintToHashKey({subject,predicate,object})] = true;
   // create link from resource to tabId
   putHash(resourcesToTabId,true,[subject,predicate,object,tabId]);
   res.status(201).send();
@@ -136,7 +180,7 @@ app.delete('/monitor', function( req, res ) {
 
   // delete link from tabId to resource
   tabIdToResources[tabId] ||= {};
-  delete tabIdToResources[tabId][{subject,predicate,object}];
+  delete tabIdToResources[tabId][resourceConstraintToHashKey({subject,predicate,object})];
   if( Object.keys(tabIdToResources[tabId]).length === 0 )
     delete tabIdToResources[tabId];
     
@@ -145,11 +189,38 @@ app.delete('/monitor', function( req, res ) {
   res.status(201).send();
 });
 
+/**
+ * Disconnects a tabId from monitored  entities.
+ *
+ * @param {string} tabId The tab to disconnect.
+ */
+function disconnectTabId( tabId ) {
+  // remove from resource structure
+  const monitoredResources = Object.keys( tabIdToResources[tabId] || {} );
+  monitoredResources
+    .map( (constraintKey ) => hashKeyToResourceConstraint(constraintKey) )
+    .forEach( ({subject,predicate,object}) =>
+      remHash( resourcesToTabId, [subject,predicate,object,tabId] )
+    );
+  // remove from tabId structure
+  delete tabIdToResources[tabId];
+}
+
 app.post('/.mu/delta', async function (req, res) {
   // Maps tabId to interesting quads
   try {
     const messages = {};
 
+    // disconnect unconnected tabs
+    req
+      .body
+      .flatMap( ({deletes}) => deletes )
+      .filter( ({predicate, object}) =>
+        predicate.value == "http://www.w3.org/1999/02/22-rdf-syntax-ns#type"
+          && object.value == "http://mu.semte.ch/vocabularies/push/Tab" )
+      .forEach( ({subject}) => disconnectTabId(subject.value) );
+
+    // send out messages
     req
       .body
       .flatMap((delta) => [...delta.inserts, ...delta.deletes])
