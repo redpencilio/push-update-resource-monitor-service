@@ -241,10 +241,15 @@ app.post('/.mu/delta', async function (req, res) {
     const sparqlInsertTriples = [];
     if ( Object.keys(messages).length ) {
       for( const tabId in messages ) {
-        for( const { quad: _quad, key } of messages[tabId] ) {
+        // Store messages in a hash so we can fold them and create fewer deltas
+        const matchMessages = {};
+        messages[tabId].forEach( ({key: [subject,predicate,object]}) => {
+          matchMessages[JSON.stringify({subject,predicate,object})] = true;
+        });
+
+        for( const quadMatchMessage in matchMessages ) {
           const pushUuid = uuid();
           const pushUri = `http://services.semantic.works/resource-monitor/${pushUuid}`;
-          const quadMatchMessage = JSON.stringify({subject: key[0], predicate: key[1], object: key[2]});
           sparqlInsertTriples.push(
             `${sparqlEscapeUri(pushUri)}
             a push:Update;
