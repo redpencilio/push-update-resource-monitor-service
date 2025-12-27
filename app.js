@@ -252,20 +252,20 @@ app.post('/.mu/delta', async function (req, res) {
           const pushUri = `http://services.semantic.works/resource-monitor/${pushUuid}`;
           sparqlInsertTriples.push(
             `${sparqlEscapeUri(pushUri)}
-            a push:Update;
-            mu:uuid ${sparqlEscapeString(pushUuid)};
-            push:channel <http://services.semantic.works/resource-monitor>;
-            push:target ${sparqlEscapeUri(tabId)};
-            push:message ${sparqlEscapeString(quadMatchMessage)}.`);
+             a push:Update;
+             mu:uuid ${sparqlEscapeString(pushUuid)};
+             push:channel <http://services.semantic.works/resource-monitor>;
+             push:target ${sparqlEscapeUri(tabId)};
+             push:message ${sparqlEscapeString(quadMatchMessage)}.`);
         }
       }
       await update(`
-      PREFIX push: <http://mu.semte.ch/vocabularies/push/>
-      PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
-      PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-      INSERT DATA {
-    ${sparqlInsertTriples.join("\n")}
-    }`);
+        PREFIX push: <http://mu.semte.ch/vocabularies/push/>
+        PREFIX mu: <http://mu.semte.ch/vocabularies/core/>
+        PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+        INSERT DATA {
+          ${sparqlInsertTriples.join("\n")}
+        }`);
     }
     res.status(200).send();
   } catch (e) {
