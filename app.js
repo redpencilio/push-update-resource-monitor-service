@@ -183,10 +183,10 @@ app.delete('/monitor', function( req, res ) {
   delete tabIdToResources[tabId][resourceConstraintToHashKey({subject,predicate,object})];
   if( Object.keys(tabIdToResources[tabId]).length === 0 )
     delete tabIdToResources[tabId];
-    
+
   // delete link from resource to tabId
   remHash(resourcesToTabId,[subject,predicate,object,tabId]);
-  res.status(201).send();
+  res.status(204).send();
 });
 
 /**
